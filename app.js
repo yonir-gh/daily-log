@@ -90,8 +90,8 @@ function nowIsoLocal() {
 }
 
 // ---- アイコン ----
-const ICON_PLAY = '<path d="M8 5.5v13l11-6.5z"/>';
 const ICON_STOP = '<rect x="7" y="7" width="10" height="10" rx="1.5"/>';
+const ICON_CHECK = '<polyline points="6.5 12.5 10.5 16.5 17.5 8"/>';
 const ICON_REPEAT = '<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>';
 const ICON_GRIP = '<line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="15" x2="17" y2="15"/>';
 
@@ -164,6 +164,47 @@ function renderToday() {
     : '';
 }
 
+// ステータスサークル: 未着手=グレーの輪（開始）、実行中=青塗り（停止）、完了=緑チェック（再実行=複製）
+function statusButton(status, onClick) {
+  const btn = document.createElement('button');
+  btn.className = `status-btn ${status}`;
+  if (status === 'doing') {
+    btn.setAttribute('aria-label', '終了');
+    btn.appendChild(icon(ICON_STOP));
+  } else if (status === 'done') {
+    btn.setAttribute('aria-label', 'もう一度実行');
+    btn.appendChild(icon(ICON_CHECK));
+  } else {
+    btn.setAttribute('aria-label', '開始');
+  }
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+
+// 右端の時刻目盛り
+function rail(timeText, active) {
+  const el = document.createElement('div');
+  el.className = 'rail';
+  if (timeText) {
+    const time = document.createElement('span');
+    time.className = 'time';
+    time.textContent = timeText;
+    el.appendChild(time);
+    const dot = document.createElement('span');
+    dot.className = 'dot' + (active ? ' active' : '');
+    el.appendChild(dot);
+  }
+  return el;
+}
+
+// 見積との差分（±0分 / +5分 / -5分）
+function diffLabel(actualMin, plannedMinutes) {
+  if (!plannedMinutes) return '';
+  const diff = actualMin - Number(plannedMinutes);
+  if (diff === 0) return '・±0分';
+  return `・${diff > 0 ? '+' : '−'}${Math.abs(diff)}分`;
+}
+
 function renderTaskCard(t) {
   const li = document.createElement('li');
   li.className = `card ${t.status}`;
@@ -174,6 +215,10 @@ function renderTaskCard(t) {
   grip.appendChild(icon(ICON_GRIP));
   li.appendChild(grip);
   enableTaskDrag(li, grip, t);
+
+  li.appendChild(statusButton(t.status, () => {
+    mutate(t.status === 'doing' ? 'taskStop' : 'taskStart', { id: t.id });
+  }));
 
   const body = document.createElement('div');
   body.className = 'body';
@@ -193,22 +238,23 @@ function renderTaskCard(t) {
     mark.textContent = '予定';
     meta.appendChild(mark);
   }
-  if (t.planned_start || t.planned_minutes) {
+  if (t.status === 'doing' && t.actual_start) {
+    const doing = document.createElement('span');
+    doing.className = 'doing-meta';
+    doing.dataset.doingStart = t.actual_start;
+    if (t.planned_minutes) doing.dataset.planned = t.planned_minutes;
+    doing.textContent = doingText(t.actual_start, t.planned_minutes);
+    meta.appendChild(doing);
+  } else if (t.status === 'done' && t.actual_start && t.actual_end) {
+    const mins = minutesBetween(t.actual_start, t.actual_end);
+    const done = document.createElement('span');
+    done.className = 'done-meta';
+    done.textContent = `実績 ${hhmm(t.actual_start)}〜${hhmm(t.actual_end)}（${mins}分${diffLabel(mins, t.planned_minutes)}）`;
+    meta.appendChild(done);
+  } else if (t.planned_minutes) {
     const plan = document.createElement('span');
-    plan.textContent = `予定 ${t.planned_start || '--:--'}${t.planned_minutes ? '・' + fmtMinutes(Number(t.planned_minutes)) : ''}`;
+    plan.textContent = `予想 ${fmtMinutes(Number(t.planned_minutes))}`;
     meta.appendChild(plan);
-  }
-  if (t.actual_start) {
-    const actual = document.createElement('span');
-    actual.className = 'actual';
-    if (t.status === 'doing') {
-      const elapsed = minutesBetween(t.actual_start, nowIsoLocal());
-      actual.textContent = `実行中 ${hhmm(t.actual_start)}〜（${fmtMinutes(elapsed)}）`;
-      actual.dataset.doingStart = t.actual_start;
-    } else if (t.actual_end) {
-      actual.textContent = `実績 ${hhmm(t.actual_start)}〜${hhmm(t.actual_end)}（${fmtMinutes(minutesBetween(t.actual_start, t.actual_end))}）`;
-    }
-    meta.appendChild(actual);
   }
   if (meta.children.length) body.appendChild(meta);
   if (t.memo) {
@@ -220,30 +266,31 @@ function renderTaskCard(t) {
   body.addEventListener('click', () => openTaskDialog(t));
   li.appendChild(body);
 
-  const actions = document.createElement('div');
-  actions.className = 'actions';
-  if (t.status === 'doing') {
-    const stop = document.createElement('button');
-    stop.className = 'btn-stop';
-    stop.setAttribute('aria-label', '終了');
-    stop.appendChild(icon(ICON_STOP));
-    stop.addEventListener('click', () => mutate('taskStop', { id: t.id }));
-    actions.appendChild(stop);
-  } else {
-    const start = document.createElement('button');
-    start.className = 'btn-start';
-    start.setAttribute('aria-label', t.status === 'done' ? '再実行' : '開始');
-    start.appendChild(icon(ICON_PLAY));
-    start.addEventListener('click', () => mutate('taskStart', { id: t.id }));
-    actions.appendChild(start);
-  }
-  li.appendChild(actions);
+  li.appendChild(rail(t.planned_start, t.status === 'doing'));
   return li;
+}
+
+function doingText(startIso, plannedMinutes) {
+  const elapsed = minutesBetween(startIso, nowIsoLocal());
+  return `経過 ${elapsed}分${plannedMinutes ? `（予想 ${plannedMinutes}分）` : ''}`;
 }
 
 function renderEventCard(ev) {
   const li = document.createElement('li');
   li.className = 'card event';
+
+  const spacer = document.createElement('span');
+  spacer.className = 'grip';
+  li.appendChild(spacer);
+
+  li.appendChild(statusButton('todo', () => mutate('eventStart', {
+    event_id: ev.id,
+    title: ev.title,
+    date: currentDate,
+    planned_start: ev.allDay ? '' : ev.start,
+    planned_minutes: eventMinutes(ev)
+  })));
+
   const body = document.createElement('div');
   body.className = 'body';
   const title = document.createElement('div');
@@ -252,6 +299,10 @@ function renderEventCard(ev) {
   body.appendChild(title);
   const meta = document.createElement('div');
   meta.className = 'meta';
+  const mark = document.createElement('span');
+  mark.className = 'tag';
+  mark.textContent = '予定';
+  meta.appendChild(mark);
   const time = document.createElement('span');
   time.textContent = ev.allDay ? '終日' : `${ev.start}〜${ev.end}`;
   meta.appendChild(time);
@@ -263,21 +314,7 @@ function renderEventCard(ev) {
   body.appendChild(meta);
   li.appendChild(body);
 
-  const actions = document.createElement('div');
-  actions.className = 'actions';
-  const start = document.createElement('button');
-  start.className = 'btn-start';
-  start.setAttribute('aria-label', '開始');
-  start.appendChild(icon(ICON_PLAY));
-  start.addEventListener('click', () => mutate('eventStart', {
-    event_id: ev.id,
-    title: ev.title,
-    date: currentDate,
-    planned_start: ev.allDay ? '' : ev.start,
-    planned_minutes: eventMinutes(ev)
-  }));
-  actions.appendChild(start);
-  li.appendChild(actions);
+  li.appendChild(rail(ev.allDay ? '終日' : ev.start, false));
   return li;
 }
 
@@ -369,26 +406,20 @@ function renderInbox() {
       }
       mutate('inboxUpdate', { id: item.id, title: newTitle.trim() });
     });
-    li.appendChild(body);
-
-    const actions = document.createElement('div');
-    actions.className = 'actions';
-    const sched = document.createElement('button');
-    sched.className = 'btn-schedule';
-    sched.textContent = '予定へ';
-    sched.addEventListener('click', () => openScheduleDialog(item));
-    actions.appendChild(sched);
-    const start = document.createElement('button');
-    start.className = 'btn-start';
-    start.setAttribute('aria-label', '今すぐ開始');
-    start.appendChild(icon(ICON_PLAY));
-    start.addEventListener('click', () => {
+    const startBtn = statusButton('todo', () => {
       mutate('inboxStart', { id: item.id });
       currentDate = todayStr();
       showView('today');
     });
-    actions.appendChild(start);
-    li.appendChild(actions);
+    startBtn.setAttribute('aria-label', '今すぐ開始');
+    li.appendChild(startBtn);
+    li.appendChild(body);
+
+    const sched = document.createElement('button');
+    sched.className = 'text-btn';
+    sched.textContent = '予定へ';
+    sched.addEventListener('click', () => openScheduleDialog(item));
+    li.appendChild(sched);
     list.appendChild(li);
   }
 }
@@ -447,8 +478,7 @@ function startTicker() {
   clearInterval(tickTimer);
   tickTimer = setInterval(() => {
     document.querySelectorAll('[data-doing-start]').forEach((el) => {
-      const start = el.dataset.doingStart;
-      el.textContent = `実行中 ${hhmm(start)}〜（${fmtMinutes(minutesBetween(start, nowIsoLocal()))}）`;
+      el.textContent = doingText(el.dataset.doingStart, el.dataset.planned || '');
     });
   }, 1000);
 }

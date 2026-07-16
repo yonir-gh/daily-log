@@ -1,39 +1,38 @@
+/* Flowcus風デザイン: 白背景のフラットリスト + ステータスサークル + 右端タイムライン */
 :root {
-  --bg: #f5f5f7;
-  --bg-translucent: rgba(245, 245, 247, 0.85);
+  --bg: #ffffff;
+  --bg-translucent: rgba(255, 255, 255, 0.88);
   --card: #ffffff;
-  --text: #1d1d1f;
-  --text-sub: #86868b;
-  --accent: #0071e3;
+  --field: #f2f2f7;
+  --text: #1c1c1e;
+  --text-sub: #8e8e93;
+  --accent: #007aff;
   --accent-text: #ffffff;
-  --accent-shadow: rgba(0, 113, 227, 0.28);
-  --doing: #248a3d;
-  --doing-bg: #f2faf4;
-  --done: #a1a1a6;
-  --danger: #e30000;
-  --border: rgba(0, 0, 0, 0.08);
-  --hairline: rgba(0, 0, 0, 0.12);
-  --tab-bg: rgba(255, 255, 255, 0.82);
-  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --accent-shadow: rgba(0, 122, 255, 0.28);
+  --done-green: #34c759;
+  --danger: #ff3b30;
+  --ring: #c7c7cc;
+  --border: rgba(0, 0, 0, 0.1);
+  --hairline: rgba(60, 60, 67, 0.18);
+  --tab-bg: rgba(255, 255, 255, 0.85);
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #000000;
-    --bg-translucent: rgba(0, 0, 0, 0.8);
+    --bg-translucent: rgba(0, 0, 0, 0.85);
     --card: #1c1c1e;
+    --field: #1c1c1e;
     --text: #f5f5f7;
-    --text-sub: #a1a1a6;
-    --accent: #2997ff;
+    --text-sub: #98989f;
+    --accent: #0a84ff;
     --accent-text: #ffffff;
-    --accent-shadow: rgba(41, 151, 255, 0.25);
-    --doing: #30d158;
-    --doing-bg: #10231a;
-    --done: #6e6e73;
+    --accent-shadow: rgba(10, 132, 255, 0.3);
+    --done-green: #30d158;
     --danger: #ff453a;
-    --border: rgba(255, 255, 255, 0.1);
-    --hairline: rgba(255, 255, 255, 0.16);
-    --tab-bg: rgba(22, 22, 23, 0.82);
-    --card-shadow: none;
+    --ring: #48484a;
+    --border: rgba(255, 255, 255, 0.14);
+    --hairline: rgba(84, 84, 88, 0.6);
+    --tab-bg: rgba(22, 22, 23, 0.85);
   }
 }
 
@@ -60,7 +59,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 0 12px;
+  padding: 12px 0 8px;
   position: sticky;
   top: 0;
   background: var(--bg-translucent);
@@ -72,9 +71,9 @@ body {
   padding-right: 16px;
 }
 .date-label {
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   background: none;
   border: none;
   color: var(--text);
@@ -82,7 +81,7 @@ body {
   border-radius: 980px;
   transition: background 0.15s;
 }
-.date-label:active { background: var(--border); }
+.date-label:active { background: var(--field); }
 .icon-btn {
   background: none;
   border: none;
@@ -93,9 +92,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
 }
-.icon-btn:active { background: var(--border); }
+.icon-btn:active { background: var(--field); }
 .icon-btn svg {
   width: 20px;
   height: 20px;
@@ -105,104 +103,137 @@ body {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.view-header { padding: 22px 0 14px; }
-.view-header h1 { font-size: 1.55rem; font-weight: 700; letter-spacing: -0.02em; }
+.view-header { padding: 20px 0 10px; }
+.view-header h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.02em; }
 
 .summary {
   color: var(--text-sub);
-  font-size: 0.8rem;
-  padding: 0 2px 12px;
+  font-size: 0.75rem;
+  padding: 0 2px 8px;
+  border-bottom: 0.5px solid var(--hairline);
 }
 
-/* カードリスト */
-.card-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+/* フラットリスト */
+.card-list { list-style: none; display: flex; flex-direction: column; }
 .card {
-  background: var(--card);
-  border: none;
-  border-radius: 14px;
-  box-shadow: var(--card-shadow);
-  padding: 14px 16px;
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  transition: box-shadow 0.2s;
+  padding: 10px 0;
+  border-bottom: 0.5px solid var(--hairline);
+  background: transparent;
 }
-.card.doing {
-  background: var(--doing-bg);
-  box-shadow: inset 0 0 0 1.5px var(--doing);
-}
-.card.done { opacity: 0.55; }
-.card .body { flex: 1; min-width: 0; cursor: pointer; }
+.card .body { flex: 1; min-width: 0; cursor: pointer; padding: 2px 0; }
 .card .title {
-  font-weight: 600;
-  font-size: 0.95rem;
-  letter-spacing: -0.01em;
+  font-weight: 500;
+  font-size: 0.93rem;
+  letter-spacing: -0.005em;
   word-break: break-word;
 }
-.card.done .title { text-decoration: line-through; color: var(--done); }
 .card .meta {
   color: var(--text-sub);
-  font-size: 0.76rem;
-  margin-top: 4px;
+  font-size: 0.74rem;
+  margin-top: 3px;
   display: flex;
-  gap: 8px;
+  gap: 7px;
   flex-wrap: wrap;
   align-items: center;
 }
 .card .meta .tag {
   border: 1px solid var(--hairline);
-  border-radius: 5px;
-  padding: 0.5px 5px;
-  font-size: 0.66rem;
-  letter-spacing: 0.02em;
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 0.64rem;
 }
-.card .meta .actual { color: var(--doing); font-weight: 600; }
-.card .memo { color: var(--text-sub); font-size: 0.76rem; margin-top: 4px; white-space: pre-wrap; }
+.card .meta .done-meta { color: var(--done-green); font-weight: 500; }
+.card .meta .doing-meta { color: var(--accent); font-weight: 500; }
+.card .memo { color: var(--text-sub); font-size: 0.74rem; margin-top: 3px; white-space: pre-wrap; }
 
-.card .actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
-.card .actions button {
-  border: none;
-  border-radius: 980px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  transition: opacity 0.15s, transform 0.1s;
-}
-.card .actions button:active { opacity: 0.7; transform: scale(0.94); }
-/* 再生/停止のアイコンボタン */
-.btn-start, .btn-stop {
-  width: 40px;
-  height: 40px;
+/* ステータスサークル（開始/停止/再実行） */
+.status-btn {
+  width: 29px;
+  height: 29px;
+  border-radius: 50%;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  border: none;
+  background: none;
+  transition: transform 0.12s;
 }
-.btn-start svg, .btn-stop svg { width: 15px; height: 15px; fill: currentColor; }
-.btn-start svg { margin-left: 2px; } /* 再生三角の光学中央合わせ */
-.btn-start { background: var(--accent); color: var(--accent-text); }
-.btn-stop { background: var(--doing); color: #fff; }
-.btn-schedule { background: var(--accent); color: var(--accent-text); padding: 10px 16px; }
+.status-btn:active { transform: scale(0.9); }
+.status-btn.todo { border: 2px solid var(--ring); background: transparent; }
+.status-btn.doing { background: var(--accent); }
+.status-btn.doing svg { width: 11px; height: 11px; fill: #fff; }
+.status-btn.done { border: 2px solid var(--done-green); }
+.status-btn.done svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: var(--done-green);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 右端タイムライン */
+.rail {
+  flex-shrink: 0;
+  width: 50px;
+  align-self: stretch;
+  position: relative;
+}
+.rail::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  right: 8px;
+  width: 1.5px;
+  background: var(--hairline);
+}
+.rail .time {
+  position: absolute;
+  top: 5px;
+  right: 17px;
+  font-size: 0.66rem;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+.rail .dot {
+  position: absolute;
+  top: 9px;
+  right: 5.5px;
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: var(--ring);
+}
+.rail .dot.active { background: var(--accent); }
 
 /* ドラッグハンドル */
 .grip {
   flex-shrink: 0;
-  width: 22px;
+  width: 18px;
   align-self: stretch;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--done);
+  color: var(--ring);
   cursor: grab;
   touch-action: none;
   background: none;
   border: none;
   padding: 0;
 }
-.grip svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.grip svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .card.dragging {
-  opacity: 0.95;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  background: var(--card);
+  opacity: 0.97;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+  border-radius: 12px;
   position: relative;
   z-index: 15;
 }
@@ -210,10 +241,10 @@ body {
 /* タスクカラー */
 .color-dot {
   display: inline-block;
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  margin-right: 7px;
+  margin-right: 6px;
   vertical-align: 1px;
 }
 .color-field { display: flex; flex-direction: column; gap: 7px; }
@@ -248,8 +279,8 @@ body {
 
 /* メタ内アイコン（ルーチンの循環矢印） */
 .card .meta .meta-icon {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -257,6 +288,18 @@ body {
   stroke-linejoin: round;
   flex-shrink: 0;
 }
+
+/* テキストボタン（Inboxの「予定へ」） */
+.text-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 8px 6px;
+  flex-shrink: 0;
+}
+.text-btn:active { opacity: 0.5; }
 
 .empty {
   color: var(--text-sub);
@@ -267,21 +310,20 @@ body {
 }
 
 /* Inbox */
-.inbox-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.inbox-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
 .inbox-form-main { display: flex; gap: 8px; }
 .inbox-form input {
   flex: 1;
   min-width: 0;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--card);
+  padding: 11px 14px;
+  border: none;
+  border-radius: 11px;
+  background: var(--field);
   color: var(--text);
   font-size: 16px; /* iOSのズーム防止 */
 }
 .inbox-form input:focus {
   outline: none;
-  border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-shadow);
 }
 #inbox-memo { font-size: 14px; padding: 9px 14px; }
@@ -304,16 +346,15 @@ button.danger { background: none; border: none; color: var(--danger); font-size:
 .settings-actions button:not(.primary),
 .dialog-actions button:not(.primary):not(.danger) {
   background: none;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
   color: var(--accent);
   border-radius: 980px;
   padding: 11px 22px;
   font-size: 0.88rem;
   font-weight: 500;
-  transition: background 0.15s;
 }
 .settings-actions button:not(.primary):active,
-.dialog-actions button:not(.primary):not(.danger):active { background: var(--border); }
+.dialog-actions button:not(.primary):not(.danger):active { background: var(--field); }
 
 /* FAB */
 .fab {
@@ -360,7 +401,6 @@ button.danger { background: none; border: none; color: var(--danger); font-size:
   align-items: center;
   gap: 3px;
   position: relative;
-  transition: color 0.15s;
 }
 .tab svg {
   width: 22px;
@@ -371,7 +411,7 @@ button.danger { background: none; border: none; color: var(--danger); font-size:
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.tab span { font-size: 0.62rem; font-weight: 500; letter-spacing: 0.01em; }
+.tab span { font-size: 0.62rem; font-weight: 500; }
 .tab.active { color: var(--accent); }
 .badge {
   position: absolute;
@@ -400,27 +440,26 @@ button.danger { background: none; border: none; color: var(--danger); font-size:
 }
 .settings-form input, dialog input, dialog textarea {
   padding: 11px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--card);
+  border: none;
+  border-radius: 11px;
+  background: var(--field);
   color: var(--text);
   font-size: 16px;
   width: 100%;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  min-width: 0;
 }
 .settings-form input:focus, dialog input:focus, dialog textarea:focus {
   outline: none;
-  border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-shadow);
 }
 .settings-actions { display: flex; gap: 10px; }
 .status { font-size: 0.83rem; color: var(--text-sub); min-height: 1.2em; }
-.status.ok { color: var(--doing); }
+.status.ok { color: var(--done-green); }
 .status.err { color: var(--danger); }
 
 .settings-section { margin-top: 34px; padding: 2px; }
-.section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.section-head h2 { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.015em; }
+.section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.section-head h2 { font-size: 1.02rem; font-weight: 700; letter-spacing: -0.015em; }
 .section-head .primary { padding: 8px 16px; font-size: 0.8rem; }
 
 /* 曜日選択 */
@@ -433,8 +472,8 @@ button.danger { background: none; border: none; color: var(--danger); font-size:
   display: block;
   text-align: center;
   padding: 9px 0;
-  border: 1px solid var(--border);
   border-radius: 10px;
+  background: var(--field);
   font-size: 0.82rem;
   color: var(--text-sub);
   transition: all 0.15s;
@@ -442,7 +481,6 @@ button.danger { background: none; border: none; color: var(--danger); font-size:
 .weekday-row input:checked + span {
   background: var(--accent);
   color: var(--accent-text);
-  border-color: var(--accent);
   font-weight: 600;
 }
 .link-btn { background: none; border: none; color: var(--accent); font-size: 0.78rem; text-align: left; padding: 2px 0; }
@@ -450,11 +488,11 @@ button.danger { background: none; border: none; color: var(--danger); font-size:
 /* ダイアログ */
 dialog {
   border: none;
-  border-radius: 20px;
+  border-radius: 18px;
   background: var(--card);
   color: var(--text);
   width: min(92vw, 420px);
-  padding: 24px;
+  padding: 22px;
   margin: auto;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
 }
@@ -463,18 +501,17 @@ dialog::backdrop {
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
 }
-dialog h2 { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.015em; margin-bottom: 4px; }
+dialog h2 { font-size: 1.08rem; font-weight: 700; letter-spacing: -0.015em; margin-bottom: 2px; }
 dialog form { display: flex; flex-direction: column; gap: 13px; }
 .dialog-subtitle { color: var(--text-sub); font-size: 0.85rem; }
-/* 2カラム行。min-width:0 がないとiOSのtime入力の固有幅で列がはみ出して重なる */
 .row { display: flex; gap: 10px; }
 .row label { flex: 1 1 0; min-width: 0; }
 .row input { min-width: 0; }
 dialog select {
   padding: 11px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--card);
+  border: none;
+  border-radius: 11px;
+  background: var(--field);
   color: var(--text);
   font-size: 16px;
   width: 100%;
