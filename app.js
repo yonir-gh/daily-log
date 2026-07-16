@@ -128,9 +128,10 @@ function renderToday() {
 
     const meta = document.createElement('div');
     meta.className = 'meta';
-    if (t.source === 'routine') {
+    if (t.source === 'routine' || t.source === 'calendar') {
       const mark = document.createElement('span');
-      mark.textContent = '🔁';
+      mark.className = 'tag';
+      mark.textContent = t.source === 'routine' ? 'ルーチン' : '予定';
       meta.appendChild(mark);
     }
     if (t.planned_start || t.planned_minutes) {
@@ -202,12 +203,35 @@ function renderEventCard(ev) {
   meta.appendChild(time);
   if (ev.calendar) {
     const cal = document.createElement('span');
-    cal.textContent = `🗓 ${ev.calendar}`;
+    cal.textContent = ev.calendar;
     meta.appendChild(cal);
   }
   body.appendChild(meta);
   li.appendChild(body);
+
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  const start = document.createElement('button');
+  start.className = 'btn-start';
+  start.textContent = '開始';
+  start.addEventListener('click', () => mutate('eventStart', {
+    event_id: ev.id,
+    title: ev.title,
+    date: currentDate,
+    planned_start: ev.allDay ? '' : ev.start,
+    planned_minutes: eventMinutes(ev)
+  }));
+  actions.appendChild(start);
+  li.appendChild(actions);
   return li;
+}
+
+function eventMinutes(ev) {
+  if (ev.allDay || !ev.start || !ev.end) return '';
+  const [sh, sm] = ev.start.split(':').map(Number);
+  const [eh, em] = ev.end.split(':').map(Number);
+  const diff = eh * 60 + em - (sh * 60 + sm);
+  return diff > 0 ? String(diff) : '';
 }
 
 // ---- ルーチン ----
@@ -232,7 +256,7 @@ function renderRoutines() {
     body.className = 'body';
     const title = document.createElement('div');
     title.className = 'title';
-    title.textContent = `🔁 ${r.title}`;
+    title.textContent = r.title;
     body.appendChild(title);
     const meta = document.createElement('div');
     meta.className = 'meta';
