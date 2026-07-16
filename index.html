@@ -32,15 +32,18 @@
       <button id="btn-add-task" class="fab" aria-label="タスク追加">＋</button>
     </section>
 
-    <!-- インボックスビュー -->
+    <!-- Inboxビュー -->
     <section id="view-inbox" class="view hidden">
-      <header class="view-header"><h1>インボックス</h1></header>
+      <header class="view-header"><h1>Inbox</h1></header>
       <form id="inbox-form" class="inbox-form">
-        <input id="inbox-input" type="text" placeholder="思いついたことを入力" autocomplete="off">
-        <button type="submit" class="primary">追加</button>
+        <div class="inbox-form-main">
+          <input id="inbox-input" type="text" placeholder="思いついたことを入力" autocomplete="off">
+          <button type="submit" class="primary">追加</button>
+        </div>
+        <input id="inbox-memo" type="text" placeholder="メモ（任意）" autocomplete="off">
       </form>
       <ul id="inbox-list" class="card-list"></ul>
-      <p id="inbox-empty" class="empty hidden">インボックスは空です。</p>
+      <p id="inbox-empty" class="empty hidden">Inboxは空です。</p>
     </section>
 
     <!-- 設定ビュー -->
@@ -78,7 +81,7 @@
     </button>
     <button data-view="inbox" class="tab">
       <svg viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
-      <span>インボックス</span><em id="inbox-badge" class="badge hidden"></em>
+      <span>Inbox</span><em id="inbox-badge" class="badge hidden"></em>
     </button>
     <button data-view="settings" class="tab">
       <svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
@@ -95,6 +98,22 @@
       <div class="row">
         <label>開始予定<input id="task-start" type="time"></label>
         <label>見積（分）<input id="task-minutes" type="number" min="1" step="1" inputmode="numeric"></label>
+      </div>
+      <div class="row" id="task-actual-row">
+        <label>実績開始<input id="task-actual-start" type="time"></label>
+        <label>実績終了<input id="task-actual-end" type="time"></label>
+      </div>
+      <div class="color-field">
+        <span class="field-label">カラー</span>
+        <div class="color-row" id="task-colors">
+          <label><input type="radio" name="task-color" value="" checked><span class="swatch none"></span></label>
+          <label><input type="radio" name="task-color" value="#ff3b30"><span class="swatch" style="background:#ff3b30"></span></label>
+          <label><input type="radio" name="task-color" value="#ff9500"><span class="swatch" style="background:#ff9500"></span></label>
+          <label><input type="radio" name="task-color" value="#ffcc00"><span class="swatch" style="background:#ffcc00"></span></label>
+          <label><input type="radio" name="task-color" value="#34c759"><span class="swatch" style="background:#34c759"></span></label>
+          <label><input type="radio" name="task-color" value="#007aff"><span class="swatch" style="background:#007aff"></span></label>
+          <label><input type="radio" name="task-color" value="#af52de"><span class="swatch" style="background:#af52de"></span></label>
+        </div>
       </div>
       <label>メモ<textarea id="task-memo" rows="2"></textarea></label>
       <div class="dialog-actions">
@@ -145,6 +164,26 @@
           <label><input type="checkbox" value="6"><span>土</span></label>
         </div>
         <button type="button" id="btn-routine-everyday" class="link-btn">毎日にする</button>
+      </div>
+      <label>頻度
+        <select id="routine-interval">
+          <option value="1">毎週</option>
+          <option value="2">隔週（2週おき）</option>
+          <option value="3">3週おき</option>
+          <option value="4">4週おき</option>
+        </select>
+      </label>
+      <div class="color-field">
+        <span class="field-label">カラー</span>
+        <div class="color-row" id="routine-colors">
+          <label><input type="radio" name="routine-color" value="" checked><span class="swatch none"></span></label>
+          <label><input type="radio" name="routine-color" value="#ff3b30"><span class="swatch" style="background:#ff3b30"></span></label>
+          <label><input type="radio" name="routine-color" value="#ff9500"><span class="swatch" style="background:#ff9500"></span></label>
+          <label><input type="radio" name="routine-color" value="#ffcc00"><span class="swatch" style="background:#ffcc00"></span></label>
+          <label><input type="radio" name="routine-color" value="#34c759"><span class="swatch" style="background:#34c759"></span></label>
+          <label><input type="radio" name="routine-color" value="#007aff"><span class="swatch" style="background:#007aff"></span></label>
+          <label><input type="radio" name="routine-color" value="#af52de"><span class="swatch" style="background:#af52de"></span></label>
+        </div>
       </div>
       <label>メモ<textarea id="routine-memo" rows="2"></textarea></label>
       <div class="dialog-actions">
