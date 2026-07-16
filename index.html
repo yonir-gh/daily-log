@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1a1d29">
+  <title>DailyLog</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="main">
+
+    <!-- 今日ビュー -->
+    <section id="view-today" class="view">
+      <header class="date-nav">
+        <button id="btn-prev-day" class="icon-btn" aria-label="前の日">◀</button>
+        <button id="btn-today" class="date-label"><span id="date-display"></span></button>
+        <button id="btn-next-day" class="icon-btn" aria-label="次の日">▶</button>
+      </header>
+      <div id="today-summary" class="summary"></div>
+      <ul id="task-list" class="card-list"></ul>
+      <p id="task-empty" class="empty hidden">タスクはありません。下の＋から追加するか、インボックスから割り当ててください。</p>
+      <button id="btn-add-task" class="fab" aria-label="タスク追加">＋</button>
+    </section>
+
+    <!-- インボックスビュー -->
+    <section id="view-inbox" class="view hidden">
+      <header class="view-header"><h1>インボックス</h1></header>
+      <form id="inbox-form" class="inbox-form">
+        <input id="inbox-input" type="text" placeholder="思いついたことを入力" autocomplete="off">
+        <button type="submit" class="primary">追加</button>
+      </form>
+      <ul id="inbox-list" class="card-list"></ul>
+      <p id="inbox-empty" class="empty hidden">インボックスは空です。</p>
+    </section>
+
+    <!-- 設定ビュー -->
+    <section id="view-settings" class="view hidden">
+      <header class="view-header"><h1>設定</h1></header>
+      <div class="settings-form">
+        <label>API URL
+          <input id="setting-url" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+        </label>
+        <label>トークン
+          <input id="setting-token" type="password" placeholder="合言葉">
+        </label>
+        <div class="settings-actions">
+          <button id="btn-save-settings" class="primary">保存</button>
+          <button id="btn-test-connection">接続テスト</button>
+        </div>
+        <p id="settings-status" class="status"></p>
+      </div>
+    </section>
+  </main>
+
+  <!-- 下部タブ -->
+  <nav class="tab-bar">
+    <button data-view="today" class="tab active">📅<span>今日</span></button>
+    <button data-view="inbox" class="tab">📥<span>インボックス</span><em id="inbox-badge" class="badge hidden"></em></button>
+    <button data-view="settings" class="tab">⚙️<span>設定</span></button>
+  </nav>
+
+  <!-- タスク追加・編集ダイアログ -->
+  <dialog id="task-dialog">
+    <form id="task-form" method="dialog">
+      <h2 id="task-dialog-title">タスクを追加</h2>
+      <label>タイトル<input id="task-title" type="text" required autocomplete="off"></label>
+      <label>日付<input id="task-date" type="date" required></label>
+      <div class="row">
+        <label>開始予定<input id="task-start" type="time"></label>
+        <label>見積（分）<input id="task-minutes" type="number" min="1" step="1" inputmode="numeric"></label>
+      </div>
+      <label>メモ<textarea id="task-memo" rows="2"></textarea></label>
+      <div class="dialog-actions">
+        <button type="button" id="btn-task-delete" class="danger hidden">削除</button>
+        <span class="spacer"></span>
+        <button type="button" id="btn-task-cancel">キャンセル</button>
+        <button type="submit" class="primary" id="btn-task-save">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- インボックス→スケジュール ダイアログ -->
+  <dialog id="schedule-dialog">
+    <form id="schedule-form" method="dialog">
+      <h2>スケジュールへ</h2>
+      <p id="schedule-item-title" class="dialog-subtitle"></p>
+      <label>日付<input id="schedule-date" type="date" required></label>
+      <div class="row">
+        <label>開始予定<input id="schedule-start" type="time"></label>
+        <label>見積（分）<input id="schedule-minutes" type="number" min="1" step="1" inputmode="numeric"></label>
+      </div>
+      <div class="dialog-actions">
+        <span class="spacer"></span>
+        <button type="button" id="btn-schedule-cancel">キャンセル</button>
+        <button type="submit" class="primary">追加</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="loading" class="loading hidden"><div class="spinner"></div></div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
