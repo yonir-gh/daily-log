@@ -64,10 +64,19 @@
 | planned_minutes | 見積分数（空可） |
 | actual_start | 実績開始（ISO、空可） |
 | actual_end | 実績終了（ISO、空可） |
-| status | todo / doing / done |
+| status | todo / doing / done / skipped（ルーチン生成タスクの削除時） |
 | source | inbox / direct / routine / calendar |
 | memo | メモ |
 | created_at | 作成日時（ISO） |
+| routine_id | 生成元ルーチンのID（重複生成の防止用） |
+| event_id | 取り込み元カレンダー予定のID（重複表示の防止用） |
+| sort_order | 並び順キー（数値文字列）。未設定なら予定時刻から導出。ドラッグ並び替えで更新 |
+| color | 表示色（#rrggbb、空=なし） |
+
+### 挙動のルール
+- タスクは並行実行できる（開始しても他の実行中タスクは止めない）
+- 完了済みタスクを再度開始すると複製が作られて開始され、元の実績は保持される
+- 実績の開始/終了時刻は編集ダイアログから手修正できる（終了あり=done、開始のみ=doing、両方空=todo に自動整合）
 
 ## API（GAS doPost）
 
@@ -83,6 +92,8 @@
 | inboxUpdate | { id, title, memo } | インボックス編集 |
 | inboxDelete | { id } | インボックス削除（status=deleted） |
 | inboxToTask | { id, date, plannedStart, plannedMinutes } | インボックス項目をタスク化 |
+| inboxStart | { id } | インボックス項目を今日のタスク化して即開始 |
+| eventStart | { event_id, title, date, planned_start, planned_minutes } | カレンダー予定をタスク化して即開始 |
 | taskAdd | { title, date, plannedStart, plannedMinutes, memo } | タスク直接追加 |
 | taskUpdate | { id, ...変更フィールド } | タスク編集 |
 | taskStart | { id } | 実績開始を記録。実行中の他タスクは自動終了 |
@@ -119,6 +130,9 @@
 | memo | メモ |
 | active | true / false |
 | created_at | 作成日時（ISO） |
+| interval_weeks | 何週おきか（1=毎週、2=隔週…） |
+| anchor_date | 週間隔の基準日（この週から数えてinterval_weeksの倍数の週に生成） |
+| color | 生成タスクに引き継ぐ表示色 |
 
 ルーチンは getData 時に当日分のタスクを自動生成する（過去日は生成しない）。
 tasksシートの routine_id 列で生成済みかを判定する。
