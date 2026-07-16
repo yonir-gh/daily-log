@@ -4,7 +4,7 @@
 const SETTINGS_KEY = 'dailylog.settings';
 let settings = loadSettings();
 let currentDate = todayStr();
-let data = { tasks: [], inbox: [] };
+let data = { tasks: [], inbox: [], events: [], routines: [] };
 let tickTimer = null;
 
 const $ = (id) => document.getElementById(id);
@@ -45,7 +45,10 @@ async function api(action, payload, opts = {}) {
 async function reload(opts = {}) {
   try {
     data = await api('getData', { date: currentDate }, opts);
+    data.events = data.events || [];
+    data.routines = data.routines || [];
     renderAll();
+    if (data.warning) toast(data.warning);
   } catch (e) {
     toast(e.message);
   }
@@ -86,6 +89,7 @@ function nowIsoLocal() {
 function renderAll() {
   renderToday();
   renderInbox();
+  renderRoutines();
 }
 
 function renderToday() {
@@ -93,11 +97,22 @@ function renderToday() {
   const list = $('task-list');
   list.innerHTML = '';
   const tasks = data.tasks;
-  $('task-empty').classList.toggle('hidden', tasks.length > 0);
+  $('task-empty').classList.toggle('hidden', tasks.length > 0 || data.events.length > 0);
+
+  // タスクとカレンダー予定を時刻順に混ぜて表示する（終日予定は先頭）
+  const items = [];
+  for (const ev of data.events) items.push({ sort: ev.allDay ? '!' : ev.start, ev });
+  for (const t of tasks) items.push({ sort: t.planned_start || '99:99', t });
+  items.sort((a, b) => (a.sort < b.sort ? -1 : a.sort > b.sort ? 1 : 0));
 
   let doneCount = 0, actualTotal = 0, plannedTotal = 0;
 
-  for (const t of tasks) {
+  for (const item of items) {
+    if (item.ev) {
+      list.appendChild(renderEventCard(item.ev));
+      continue;
+    }
+    const t = item.t;
     if (t.status === 'done') doneCount++;
     if (t.planned_minutes) plannedTotal += Number(t.planned_minutes) || 0;
 
@@ -113,6 +128,11 @@ function renderToday() {
 
     const meta = document.createElement('div');
     meta.className = 'meta';
+    if (t.source === 'routine') {
+      const mark = document.createElement('span');
+      mark.textContent = '🔁';
+      meta.appendChild(mark);
+    }
     if (t.planned_start || t.planned_minutes) {
       const plan = document.createElement('span');
       plan.textContent = `予定 ${t.planned_start || '--:--'}${t.planned_minutes ? '・' + fmtMinutes(Number(t.planned_minutes)) : ''}`;
@@ -164,6 +184,82 @@ function renderToday() {
   $('today-summary').textContent = tasks.length
     ? `${tasks.length}件中 ${doneCount}件完了 ｜ 実績合計 ${fmtMinutes(actualTotal)}${plannedTotal ? ` ｜ 見積合計 ${fmtMinutes(plannedTotal)}` : ''}`
     : '';
+}
+
+function renderEventCard(ev) {
+  const li = document.createElement('li');
+  li.className = 'card event';
+  const body = document.createElement('div');
+  body.className = 'body';
+  const title = document.createElement('div');
+  title.className = 'title';
+  title.textContent = ev.title;
+  body.appendChild(title);
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const time = document.createElement('span');
+  time.textContent = ev.allDay ? '終日' : `${ev.start}〜${ev.end}`;
+  meta.appendChild(time);
+  if (ev.calendar) {
+    const cal = document.createElement('span');
+    cal.textContent = `🗓 ${ev.calendar}`;
+    meta.appendChild(cal);
+  }
+  body.appendChild(meta);
+  li.appendChild(body);
+  return li;
+}
+
+// ---- ルーチン ----
+const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+
+function weekdaysLabel(weekdays) {
+  const days = weekdays.split(',').filter((s) => s !== '');
+  if (days.length === 7) return '毎日';
+  return days.map((d) => WEEKDAY_LABELS[Number(d)]).join('・');
+}
+
+function renderRoutines() {
+  const list = $('routine-list');
+  list.innerHTML = '';
+  const routines = data.routines;
+  $('routine-empty').classList.toggle('hidden', routines.length > 0);
+
+  for (const r of routines) {
+    const li = document.createElement('li');
+    li.className = 'card';
+    const body = document.createElement('div');
+    body.className = 'body';
+    const title = document.createElement('div');
+    title.className = 'title';
+    title.textContent = `🔁 ${r.title}`;
+    body.appendChild(title);
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const info = document.createElement('span');
+    info.textContent = `${weekdaysLabel(r.weekdays)}${r.planned_start ? '・' + r.planned_start : ''}${r.planned_minutes ? '・' + fmtMinutes(Number(r.planned_minutes)) : ''}`;
+    meta.appendChild(info);
+    body.appendChild(meta);
+    body.addEventListener('click', () => openRoutineDialog(r));
+    li.appendChild(body);
+    list.appendChild(li);
+  }
+}
+
+let editingRoutineId = null;
+function openRoutineDialog(routine) {
+  editingRoutineId = routine ? routine.id : null;
+  $('routine-dialog-title').textContent = routine ? 'ルーチンを編集' : 'ルーチンを追加';
+  $('routine-title').value = routine ? routine.title : '';
+  $('routine-start').value = routine ? routine.planned_start : '';
+  $('routine-minutes').value = routine ? routine.planned_minutes : '';
+  $('routine-memo').value = routine ? routine.memo : '';
+  const checked = routine ? routine.weekdays.split(',') : ['0', '1', '2', '3', '4', '5', '6'];
+  document.querySelectorAll('#routine-weekdays input').forEach((cb) => {
+    cb.checked = checked.includes(cb.value);
+  });
+  $('btn-routine-delete').classList.toggle('hidden', !routine);
+  $('routine-dialog').showModal();
 }
 
 function renderInbox() {
@@ -335,6 +431,40 @@ function bindEvents() {
     });
   });
   $('btn-schedule-cancel').addEventListener('click', () => $('schedule-dialog').close());
+
+  $('btn-add-routine').addEventListener('click', () => openRoutineDialog(null));
+  $('routine-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const weekdays = [...document.querySelectorAll('#routine-weekdays input:checked')]
+      .map((cb) => cb.value).join(',');
+    if (!weekdays) {
+      toast('曜日を1つ以上選んでください');
+      return;
+    }
+    $('routine-dialog').close();
+    const fields = {
+      title: $('routine-title').value.trim(),
+      planned_start: $('routine-start').value,
+      planned_minutes: $('routine-minutes').value,
+      weekdays,
+      memo: $('routine-memo').value
+    };
+    if (!fields.title) return;
+    if (editingRoutineId) {
+      mutate('routineUpdate', { id: editingRoutineId, ...fields });
+    } else {
+      mutate('routineAdd', fields);
+    }
+  });
+  $('btn-routine-cancel').addEventListener('click', () => $('routine-dialog').close());
+  $('btn-routine-delete').addEventListener('click', () => {
+    if (!confirm('このルーチンを削除しますか？（作成済みのタスクは残ります）')) return;
+    $('routine-dialog').close();
+    mutate('routineDelete', { id: editingRoutineId });
+  });
+  $('btn-routine-everyday').addEventListener('click', () => {
+    document.querySelectorAll('#routine-weekdays input').forEach((cb) => { cb.checked = true; });
+  });
 
   $('btn-save-settings').addEventListener('click', () => {
     settings.apiUrl = $('setting-url').value.trim();

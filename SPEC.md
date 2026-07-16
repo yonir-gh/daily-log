@@ -87,7 +87,11 @@
 | taskUpdate | { id, ...変更フィールド } | タスク編集 |
 | taskStart | { id } | 実績開始を記録。実行中の他タスクは自動終了 |
 | taskStop | { id } | 実績終了を記録 |
-| taskDelete | { id } | タスク削除（行削除ではなくstatus管理はせず物理削除） |
+| taskDelete | { id } | タスク削除。ルーチン生成タスクはstatus=skippedで隠す（物理削除すると再生成されるため） |
+| routineAdd | { title, planned_start, planned_minutes, weekdays, memo } | ルーチン追加。weekdaysは "1,2,3,4,5" 形式（0=日〜6=土） |
+| routineUpdate | { id, ...変更フィールド } | ルーチン編集 |
+| routineDelete | { id } | ルーチン削除（生成済みタスクは残る） |
+| dumpAll | - | 全データ取得（デバッグ・Phase 3のエクスポート用） |
 
 ## Obsidian日次ログ形式（Phase 3で出力）
 
@@ -104,10 +108,30 @@
 
 出力先: `~/Library/Mobile Documents/iCloud~md~obsidian/Documents/ThinkPad/DailyLog/YYYY-MM-DD.md`
 
+### routines シート（Phase 2）
+| 列 | 内容 |
+|---|---|
+| id | 一意ID |
+| title | タイトル |
+| planned_start | 予定開始（HH:MM、空可） |
+| planned_minutes | 見積分数（空可） |
+| weekdays | 繰り返す曜日（"0,1,2"形式、0=日〜6=土） |
+| memo | メモ |
+| active | true / false |
+| created_at | 作成日時（ISO） |
+
+ルーチンは getData 時に当日分のタスクを自動生成する（過去日は生成しない）。
+tasksシートの routine_id 列で生成済みかを判定する。
+
+### カレンダー読み込み（Phase 2）
+- getData のレスポンスに events（{id, title, calendar, allDay, start, end}の配列）が含まれる
+- Googleカレンダー側で表示中（isSelected）のカレンダーのみ対象
+- 権限未承認の場合は events=[] + warning を返し、タスク機能は動き続ける
+
 ## フェーズ計画
 
-1. **Phase 1（コア）**: インボックス + 当日スケジュール + 開始/終了ログ + PWA化 ← 今ここ
-2. **Phase 2**: Googleカレンダー読み込み表示 + ルーチンタスク（毎日・毎週の繰り返し）
+1. **Phase 1（コア）**: インボックス + 当日スケジュール + 開始/終了ログ + PWA化 ✅ 2026-07-16
+2. **Phase 2**: Googleカレンダー読み込み表示 + ルーチンタスク（毎日・毎週の繰り返し） ← 今ここ
 3. **Phase 3**: Mac日次スクリプト（launchd）でObsidianへ自動書き出し
 
 ## 決定事項の経緯

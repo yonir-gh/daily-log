@@ -54,6 +54,14 @@
         </div>
         <p id="settings-status" class="status"></p>
       </div>
+      <div class="settings-section">
+        <div class="section-head">
+          <h2>ルーチンタスク</h2>
+          <button id="btn-add-routine" class="primary">追加</button>
+        </div>
+        <ul id="routine-list" class="card-list"></ul>
+        <p id="routine-empty" class="empty hidden">ルーチンはありません。毎日・毎週繰り返すタスクを登録すると、その曜日の「今日」に自動で並びます。</p>
+      </div>
     </section>
   </main>
 
@@ -98,6 +106,38 @@
         <span class="spacer"></span>
         <button type="button" id="btn-schedule-cancel">キャンセル</button>
         <button type="submit" class="primary">追加</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ルーチン追加・編集ダイアログ -->
+  <dialog id="routine-dialog">
+    <form id="routine-form" method="dialog">
+      <h2 id="routine-dialog-title">ルーチンを追加</h2>
+      <label>タイトル<input id="routine-title" type="text" required autocomplete="off"></label>
+      <div class="row">
+        <label>開始予定<input id="routine-start" type="time"></label>
+        <label>見積（分）<input id="routine-minutes" type="number" min="1" step="1" inputmode="numeric"></label>
+      </div>
+      <div class="weekday-field">
+        <span class="field-label">繰り返す曜日</span>
+        <div class="weekday-row" id="routine-weekdays">
+          <label><input type="checkbox" value="0"><span>日</span></label>
+          <label><input type="checkbox" value="1"><span>月</span></label>
+          <label><input type="checkbox" value="2"><span>火</span></label>
+          <label><input type="checkbox" value="3"><span>水</span></label>
+          <label><input type="checkbox" value="4"><span>木</span></label>
+          <label><input type="checkbox" value="5"><span>金</span></label>
+          <label><input type="checkbox" value="6"><span>土</span></label>
+        </div>
+        <button type="button" id="btn-routine-everyday" class="link-btn">毎日にする</button>
+      </div>
+      <label>メモ<textarea id="routine-memo" rows="2"></textarea></label>
+      <div class="dialog-actions">
+        <button type="button" id="btn-routine-delete" class="danger hidden">削除</button>
+        <span class="spacer"></span>
+        <button type="button" id="btn-routine-cancel">キャンセル</button>
+        <button type="submit" class="primary">保存</button>
       </div>
     </form>
   </dialog>

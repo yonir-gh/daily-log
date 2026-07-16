@@ -119,6 +119,43 @@ body {
 
 .empty { color: var(--text-sub); font-size: 0.85rem; text-align: center; padding: 40px 20px; }
 
+/* カレンダー予定カード */
+.card.event {
+  border-left: 4px solid var(--accent);
+  background: transparent;
+  padding: 9px 12px;
+}
+.card.event .title { font-weight: 500; font-size: 0.88rem; }
+.card.event .meta { margin-top: 1px; }
+
+/* 設定内セクション */
+.settings-section { margin-top: 30px; padding: 4px; }
+.section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.section-head h2 { font-size: 1rem; }
+.section-head .primary { padding: 8px 14px; font-size: 0.82rem; }
+
+/* 曜日選択 */
+.weekday-field { display: flex; flex-direction: column; gap: 6px; }
+.field-label { font-size: 0.8rem; color: var(--text-sub); }
+.weekday-row { display: flex; gap: 5px; }
+.weekday-row label { flex: 1; }
+.weekday-row input { display: none; }
+.weekday-row span {
+  display: block;
+  text-align: center;
+  padding: 9px 0;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 0.85rem;
+  color: var(--text-sub);
+}
+.weekday-row input:checked + span {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+.link-btn { background: none; border: none; color: var(--accent); font-size: 0.8rem; text-align: left; padding: 2px 0; }
+
 /* インボックス */
 .inbox-form { display: flex; gap: 8px; margin-bottom: 12px; }
 .inbox-form input {

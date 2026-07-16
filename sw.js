@@ -1,5 +1,5 @@
 // アプリの外枠（HTML/CSS/JS）だけキャッシュする。APIはネットワーク必須
-const CACHE = 'dailylog-v1';
+const CACHE = 'dailylog-v2';
 const ASSETS = [
   './',
   './index.html',
