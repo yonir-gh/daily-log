@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
   <main id="main">
@@ -46,6 +46,21 @@
       <p id="inbox-empty" class="empty hidden">Inboxは空です。</p>
     </section>
 
+    <!-- 実績サマリービュー -->
+    <section id="view-summary" class="view hidden">
+      <header class="date-nav">
+        <button id="btn-sum-prev" class="icon-btn" aria-label="前の日">
+          <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button id="btn-sum-today" class="date-label"><span id="sum-date-display"></span></button>
+        <button id="btn-sum-next" class="icon-btn" aria-label="次の日">
+          <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </header>
+      <div id="summary-content"></div>
+      <p id="summary-empty" class="empty hidden">この日の実績はまだありません。</p>
+    </section>
+
     <!-- 設定ビュー -->
     <section id="view-settings" class="view hidden">
       <header class="view-header"><h1>設定</h1></header>
@@ -61,6 +76,14 @@
           <button id="btn-test-connection">接続テスト</button>
         </div>
         <p id="settings-status" class="status"></p>
+      </div>
+      <div class="settings-section">
+        <div class="section-head">
+          <h2>プロジェクト</h2>
+          <button id="btn-add-project" class="primary">追加</button>
+        </div>
+        <ul id="project-list" class="card-list"></ul>
+        <p id="project-empty" class="empty hidden">プロジェクトはありません。タスクを分類するカテゴリを登録できます。</p>
       </div>
       <div class="settings-section">
         <div class="section-head">
@@ -83,6 +106,10 @@
       <svg viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
       <span>Inbox</span><em id="inbox-badge" class="badge hidden"></em>
     </button>
+    <button data-view="summary" class="tab">
+      <svg viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+      <span>実績</span>
+    </button>
     <button data-view="settings" class="tab">
       <svg viewBox="0 0 24 24"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
       <span>設定</span>
@@ -103,18 +130,9 @@
         <label>実績開始<input id="task-actual-start" type="time"></label>
         <label>実績終了<input id="task-actual-end" type="time"></label>
       </div>
-      <div class="color-field">
-        <span class="field-label">カラー</span>
-        <div class="color-row" id="task-colors">
-          <label><input type="radio" name="task-color" value="" checked><span class="swatch none"></span></label>
-          <label><input type="radio" name="task-color" value="#ff3b30"><span class="swatch" style="background:#ff3b30"></span></label>
-          <label><input type="radio" name="task-color" value="#ff9500"><span class="swatch" style="background:#ff9500"></span></label>
-          <label><input type="radio" name="task-color" value="#ffcc00"><span class="swatch" style="background:#ffcc00"></span></label>
-          <label><input type="radio" name="task-color" value="#34c759"><span class="swatch" style="background:#34c759"></span></label>
-          <label><input type="radio" name="task-color" value="#007aff"><span class="swatch" style="background:#007aff"></span></label>
-          <label><input type="radio" name="task-color" value="#af52de"><span class="swatch" style="background:#af52de"></span></label>
-        </div>
-      </div>
+      <label>プロジェクト
+        <select id="task-project"></select>
+      </label>
       <label>メモ<textarea id="task-memo" rows="2"></textarea></label>
       <div class="dialog-actions">
         <button type="button" id="btn-task-delete" class="danger hidden">削除</button>
@@ -135,6 +153,9 @@
         <label>開始予定<input id="schedule-start" type="time"></label>
         <label>見積（分）<input id="schedule-minutes" type="number" min="1" step="1" inputmode="numeric"></label>
       </div>
+      <label>プロジェクト
+        <select id="schedule-project"></select>
+      </label>
       <div class="dialog-actions">
         <span class="spacer"></span>
         <button type="button" id="btn-schedule-cancel">キャンセル</button>
@@ -173,18 +194,9 @@
           <option value="4">4週おき</option>
         </select>
       </label>
-      <div class="color-field">
-        <span class="field-label">カラー</span>
-        <div class="color-row" id="routine-colors">
-          <label><input type="radio" name="routine-color" value="" checked><span class="swatch none"></span></label>
-          <label><input type="radio" name="routine-color" value="#ff3b30"><span class="swatch" style="background:#ff3b30"></span></label>
-          <label><input type="radio" name="routine-color" value="#ff9500"><span class="swatch" style="background:#ff9500"></span></label>
-          <label><input type="radio" name="routine-color" value="#ffcc00"><span class="swatch" style="background:#ffcc00"></span></label>
-          <label><input type="radio" name="routine-color" value="#34c759"><span class="swatch" style="background:#34c759"></span></label>
-          <label><input type="radio" name="routine-color" value="#007aff"><span class="swatch" style="background:#007aff"></span></label>
-          <label><input type="radio" name="routine-color" value="#af52de"><span class="swatch" style="background:#af52de"></span></label>
-        </div>
-      </div>
+      <label>プロジェクト
+        <select id="routine-project"></select>
+      </label>
       <label>メモ<textarea id="routine-memo" rows="2"></textarea></label>
       <div class="dialog-actions">
         <button type="button" id="btn-routine-delete" class="danger hidden">削除</button>
@@ -195,9 +207,35 @@
     </form>
   </dialog>
 
+  <!-- プロジェクト追加・編集ダイアログ -->
+  <dialog id="project-dialog">
+    <form id="project-form" method="dialog">
+      <h2 id="project-dialog-title">プロジェクトを追加</h2>
+      <label>名前<input id="project-name" type="text" required autocomplete="off"></label>
+      <div class="color-field">
+        <span class="field-label">カラー</span>
+        <div class="color-row" id="project-colors">
+          <label><input type="radio" name="project-color" value="#ff3b30" checked><span class="swatch" style="background:#ff3b30"></span></label>
+          <label><input type="radio" name="project-color" value="#ff9500"><span class="swatch" style="background:#ff9500"></span></label>
+          <label><input type="radio" name="project-color" value="#34c759"><span class="swatch" style="background:#34c759"></span></label>
+          <label><input type="radio" name="project-color" value="#007aff"><span class="swatch" style="background:#007aff"></span></label>
+          <label><input type="radio" name="project-color" value="#af52de"><span class="swatch" style="background:#af52de"></span></label>
+          <label><input type="radio" name="project-color" value="#8e8e93"><span class="swatch" style="background:#8e8e93"></span></label>
+          <label><input type="radio" name="project-color" value="#a2845e"><span class="swatch" style="background:#a2845e"></span></label>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" id="btn-project-delete" class="danger hidden">削除</button>
+        <span class="spacer"></span>
+        <button type="button" id="btn-project-cancel">キャンセル</button>
+        <button type="submit" class="primary">保存</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="loading" class="loading hidden"><div class="spinner"></div></div>
   <div id="toast" class="toast hidden"></div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>

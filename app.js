@@ -4,7 +4,7 @@
 const SETTINGS_KEY = 'dailylog.settings';
 let settings = loadSettings();
 let currentDate = todayStr();
-let data = { tasks: [], inbox: [], events: [], routines: [] };
+let data = { tasks: [], inbox: [], events: [], routines: [], projects: [] };
 let tickTimer = null;
 
 const $ = (id) => document.getElementById(id);
@@ -47,6 +47,7 @@ async function reload(opts = {}) {
     data = await api('getData', { date: currentDate }, opts);
     data.events = data.events || [];
     data.routines = data.routines || [];
+    data.projects = data.projects || [];
     renderAll();
     if (data.warning) toast(data.warning);
   } catch (e) {
@@ -125,6 +126,34 @@ function renderAll() {
   renderToday();
   renderInbox();
   renderRoutines();
+  renderProjects();
+  renderSummary();
+}
+
+// ---- プロジェクト ----
+function projectById(id) {
+  return data.projects.find((p) => p.id === id) || null;
+}
+
+function taskColor(t) {
+  const p = t.project_id ? projectById(t.project_id) : null;
+  return p ? p.color : t.color || '';
+}
+
+// select要素にプロジェクトの選択肢を入れる
+function fillProjectSelect(selectEl, selectedId) {
+  selectEl.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = '';
+  none.textContent = 'なし';
+  selectEl.appendChild(none);
+  for (const p of data.projects) {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    selectEl.appendChild(opt);
+  }
+  selectEl.value = selectedId && projectById(selectedId) ? selectedId : '';
 }
 
 function renderToday() {
@@ -156,6 +185,7 @@ function renderToday() {
 
     const li = renderTaskCard(t);
     li.dataset.key = item.key;
+    li.dataset.taskId = t.id;
     list.appendChild(li);
   }
 
@@ -224,7 +254,8 @@ function renderTaskCard(t) {
   body.className = 'body';
   const title = document.createElement('div');
   title.className = 'title';
-  if (t.color) title.appendChild(colorDot(t.color));
+  const color = taskColor(t);
+  if (color) title.appendChild(colorDot(color));
   title.appendChild(document.createTextNode(t.title));
   body.appendChild(title);
 
@@ -237,6 +268,14 @@ function renderTaskCard(t) {
     mark.className = 'tag';
     mark.textContent = '予定';
     meta.appendChild(mark);
+  }
+  const project = t.project_id ? projectById(t.project_id) : null;
+  if (project) {
+    const pj = document.createElement('span');
+    pj.className = 'project-label';
+    pj.textContent = project.name;
+    if (project.color) pj.style.color = project.color;
+    meta.appendChild(pj);
   }
   if (t.status === 'doing' && t.actual_start) {
     const doing = document.createElement('span');
@@ -330,6 +369,7 @@ function enableTaskDrag(li, grip, task) {
     e.preventDefault();
     li.classList.add('dragging');
     const list = $('task-list');
+    const orderBefore = [...list.children].map((el) => el.dataset.taskId || 'ev').join(',');
 
     const onMove = (ev) => {
       const el = document.elementFromPoint(ev.clientX, ev.clientY);
@@ -348,7 +388,8 @@ function enableTaskDrag(li, grip, task) {
       window.removeEventListener('pointerup', onUp);
       window.removeEventListener('pointercancel', onUp);
       li.classList.remove('dragging');
-      saveNewOrder(li, task);
+      const orderAfter = [...list.children].map((el) => el.dataset.taskId || 'ev').join(',');
+      if (orderAfter !== orderBefore) saveNewOrder();
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -356,19 +397,36 @@ function enableTaskDrag(li, grip, task) {
   });
 }
 
-function saveNewOrder(li, task) {
-  const prev = li.previousElementSibling;
-  const next = li.nextElementSibling;
-  if (!prev && !next) return;
-  const prevKey = prev ? Number(prev.dataset.key) : null;
-  const nextKey = next ? Number(next.dataset.key) : null;
-  let newKey;
-  if (prevKey === null) newKey = nextKey - 1000;
-  else if (nextKey === null) newKey = prevKey + 1000;
-  else newKey = (prevKey + nextKey) / 2;
-  if (newKey === Number(li.dataset.key)) return;
-  li.dataset.key = newKey;
-  mutate('taskUpdate', { id: task.id, sort_order: String(newKey) });
+// ドロップ後にリスト全体の並び順キーを振り直して一括保存する。
+// 中間値方式だと同じキーのタスク（時刻なし同士など）の間に割り込めないため、毎回振り直す
+function saveNewOrder() {
+  const items = [...$('task-list').children];
+  const updates = [];
+  let i = 0;
+  let lower = -2000; // 直前の固定キー（カレンダー予定は時刻由来で動かせない）
+  while (i < items.length) {
+    if (!items[i].dataset.taskId) {
+      lower = Number(items[i].dataset.key);
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < items.length && items[j].dataset.taskId) j++;
+    const count = j - i;
+    let upper = j < items.length ? Number(items[j].dataset.key) : lower + (count + 1) * 1000;
+    if (upper <= lower) upper = lower + (count + 1) * 1000;
+    const step = (upper - lower) / (count + 1);
+    for (let k = i; k < j; k++) {
+      const key = lower + step * (k - i + 1);
+      if (Number(items[k].dataset.key) !== key) {
+        items[k].dataset.key = key;
+        updates.push({ id: items[k].dataset.taskId, sort_order: String(key) });
+      }
+    }
+    lower = upper;
+    i = j;
+  }
+  if (updates.length) mutate('taskReorder', { orders: updates });
 }
 
 // ---- Inbox ----
@@ -457,12 +515,21 @@ function renderRoutines() {
     body.className = 'body';
     const title = document.createElement('div');
     title.className = 'title';
-    if (r.color) title.appendChild(colorDot(r.color));
+    const rColor = taskColor(r);
+    if (rColor) title.appendChild(colorDot(rColor));
     title.appendChild(document.createTextNode(r.title));
     body.appendChild(title);
     const meta = document.createElement('div');
     meta.className = 'meta';
     meta.appendChild(icon(ICON_REPEAT, 'meta-icon'));
+    const rp = r.project_id ? projectById(r.project_id) : null;
+    if (rp) {
+      const pj = document.createElement('span');
+      pj.className = 'project-label';
+      pj.textContent = rp.name;
+      if (rp.color) pj.style.color = rp.color;
+      meta.appendChild(pj);
+    }
     const info = document.createElement('span');
     info.textContent = routineLabel(r);
     meta.appendChild(info);
@@ -471,6 +538,37 @@ function renderRoutines() {
     li.appendChild(body);
     list.appendChild(li);
   }
+}
+
+function renderProjects() {
+  const list = $('project-list');
+  list.innerHTML = '';
+  $('project-empty').classList.toggle('hidden', data.projects.length > 0);
+
+  for (const p of data.projects) {
+    const li = document.createElement('li');
+    li.className = 'card';
+    const body = document.createElement('div');
+    body.className = 'body';
+    const title = document.createElement('div');
+    title.className = 'title';
+    if (p.color) title.appendChild(colorDot(p.color));
+    title.appendChild(document.createTextNode(p.name));
+    body.appendChild(title);
+    body.addEventListener('click', () => openProjectDialog(p));
+    li.appendChild(body);
+    list.appendChild(li);
+  }
+}
+
+let editingProjectId = null;
+function openProjectDialog(project) {
+  editingProjectId = project ? project.id : null;
+  $('project-dialog-title').textContent = project ? 'プロジェクトを編集' : 'プロジェクトを追加';
+  $('project-name').value = project ? project.name : '';
+  setColorChoice('project-color', project && project.color ? project.color : '#ff3b30');
+  $('btn-project-delete').classList.toggle('hidden', !project);
+  $('project-dialog').showModal();
 }
 
 // 実行中タスクの経過分を毎秒更新（再取得はしない）
@@ -495,12 +593,154 @@ async function mutate(action, payload) {
 
 // ---- ビュー切り替え ----
 function showView(name) {
-  for (const v of ['today', 'inbox', 'settings']) {
+  for (const v of ['today', 'inbox', 'summary', 'settings']) {
     $(`view-${v}`).classList.toggle('hidden', v !== name);
   }
   document.querySelectorAll('.tab').forEach((tab) => {
     tab.classList.toggle('active', tab.dataset.view === name);
   });
+}
+
+// ---- 実績サマリー ----
+function renderSummary() {
+  $('sum-date-display').textContent = dateLabel(currentDate);
+  const wrap = $('summary-content');
+  wrap.innerHTML = '';
+  const tasks = data.tasks;
+  $('summary-empty').classList.toggle('hidden', tasks.length > 0);
+  if (!tasks.length) return;
+
+  const doneCount = tasks.filter((t) => t.status === 'done').length;
+  const rate = Math.round((doneCount / tasks.length) * 100);
+
+  // プロジェクト別の実績分数（実行中は経過分を含める）
+  let actualTotal = 0;
+  let plannedTotal = 0;
+  const byProject = new Map();
+  for (const t of tasks) {
+    if (t.planned_minutes) plannedTotal += Number(t.planned_minutes) || 0;
+    let mins = 0;
+    if (t.actual_start && t.actual_end) mins = minutesBetween(t.actual_start, t.actual_end);
+    else if (t.status === 'doing' && t.actual_start) mins = minutesBetween(t.actual_start, nowIsoLocal());
+    if (!mins) continue;
+    actualTotal += mins;
+    const key = t.project_id && projectById(t.project_id) ? t.project_id : '';
+    byProject.set(key, (byProject.get(key) || 0) + mins);
+  }
+
+  // 統計
+  const stats = document.createElement('div');
+  stats.className = 'summary-stats';
+  stats.appendChild(statTile(`${doneCount}/${tasks.length}件`, '完了'));
+  stats.appendChild(statTile(fmtMinutes(actualTotal), '実績合計'));
+  stats.appendChild(statTile(plannedTotal ? fmtMinutes(plannedTotal) : '—', '見積合計'));
+  wrap.appendChild(stats);
+
+  if (!actualTotal) {
+    const hint = document.createElement('p');
+    hint.className = 'empty';
+    hint.textContent = '実績が記録されるとプロジェクト別のグラフが表示されます。';
+    wrap.appendChild(hint);
+    return;
+  }
+
+  const segs = [...byProject.entries()]
+    .map(([pid, mins]) => {
+      const p = pid ? projectById(pid) : null;
+      return {
+        name: p ? p.name : 'プロジェクトなし',
+        color: p && p.color ? p.color : '',
+        mins
+      };
+    })
+    .sort((a, b) => b.mins - a.mins);
+
+  wrap.appendChild(renderDonut(segs, actualTotal, rate));
+
+  const legend = document.createElement('ul');
+  legend.className = 'legend';
+  for (const s of segs) {
+    const li = document.createElement('li');
+    li.className = 'legend-item';
+    const dot = document.createElement('span');
+    dot.className = 'color-dot';
+    if (s.color) dot.style.background = s.color;
+    else dot.style.background = 'var(--ring)';
+    li.appendChild(dot);
+    const name = document.createElement('span');
+    name.className = 'legend-name';
+    name.textContent = s.name;
+    li.appendChild(name);
+    const val = document.createElement('span');
+    val.className = 'legend-value';
+    val.textContent = `${fmtMinutes(s.mins)}・${Math.round((s.mins / actualTotal) * 100)}%`;
+    li.appendChild(val);
+    legend.appendChild(li);
+  }
+  wrap.appendChild(legend);
+}
+
+function statTile(value, label) {
+  const el = document.createElement('div');
+  el.className = 'stat';
+  const v = document.createElement('span');
+  v.className = 'stat-value';
+  v.textContent = value;
+  const l = document.createElement('span');
+  l.className = 'stat-label';
+  l.textContent = label;
+  el.appendChild(v);
+  el.appendChild(l);
+  return el;
+}
+
+// プロジェクト別ドーナツグラフ（中央は達成率）。セグメント間は2pxの隙間で区切る
+function renderDonut(segs, total, rate) {
+  const size = 210;
+  const c = size / 2;
+  const r = 82;
+  const sw = 26;
+  const circ = 2 * Math.PI * r;
+  const gap = segs.length > 1 ? 3 : 0;
+
+  const wrapEl = document.createElement('div');
+  wrapEl.className = 'donut-wrap';
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('transform', `rotate(-90 ${c} ${c})`);
+  let acc = 0;
+  for (const s of segs) {
+    const len = (s.mins / total) * circ;
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', c);
+    circle.setAttribute('cy', c);
+    circle.setAttribute('r', r);
+    circle.setAttribute('fill', 'none');
+    circle.setAttribute('stroke-width', sw);
+    circle.setAttribute('stroke-dasharray', `${Math.max(len - gap, 1)} ${circ}`);
+    circle.setAttribute('stroke-dashoffset', String(-(acc + gap / 2)));
+    circle.setAttribute('stroke-linecap', 'butt');
+    if (s.color) circle.setAttribute('stroke', s.color);
+    else circle.style.stroke = 'var(--ring)';
+    g.appendChild(circle);
+    acc += len;
+  }
+  svg.appendChild(g);
+  wrapEl.appendChild(svg);
+
+  const center = document.createElement('div');
+  center.className = 'donut-center';
+  const num = document.createElement('span');
+  num.className = 'donut-rate';
+  num.textContent = `${rate}%`;
+  const lbl = document.createElement('span');
+  lbl.className = 'donut-label';
+  lbl.textContent = '達成率';
+  center.appendChild(lbl);
+  center.appendChild(num);
+  wrapEl.appendChild(center);
+  return wrapEl;
 }
 
 // ---- カラー選択 ----
@@ -527,7 +767,7 @@ function openTaskDialog(task) {
   $('task-actual-row').classList.toggle('hidden', !task);
   $('task-actual-start').value = task ? hhmm(task.actual_start) : '';
   $('task-actual-end').value = task ? hhmm(task.actual_end) : '';
-  setColorChoice('task-color', task ? task.color : '');
+  fillProjectSelect($('task-project'), task ? task.project_id : '');
   $('btn-task-delete').classList.toggle('hidden', !task);
   $('task-dialog').showModal();
 }
@@ -540,6 +780,7 @@ function openScheduleDialog(item) {
   $('schedule-date').value = currentDate;
   $('schedule-start').value = '';
   $('schedule-minutes').value = '';
+  fillProjectSelect($('schedule-project'), '');
   $('schedule-dialog').showModal();
 }
 
@@ -553,7 +794,7 @@ function openRoutineDialog(routine) {
   $('routine-minutes').value = routine ? routine.planned_minutes : '';
   $('routine-memo').value = routine ? routine.memo : '';
   $('routine-interval').value = routine ? String(Number(routine.interval_weeks || '1') || 1) : '1';
-  setColorChoice('routine-color', routine ? routine.color : '');
+  fillProjectSelect($('routine-project'), routine ? routine.project_id : '');
   const checked = routine ? routine.weekdays.split(',') : ['0', '1', '2', '3', '4', '5', '6'];
   document.querySelectorAll('#routine-weekdays input').forEach((cb) => {
     cb.checked = checked.includes(cb.value);
@@ -593,7 +834,7 @@ function bindEvents() {
       planned_start: $('task-start').value,
       planned_minutes: $('task-minutes').value,
       memo: $('task-memo').value,
-      color: getColorChoice('task-color')
+      project_id: $('task-project').value
     };
     if (!fields.title) return;
     if (editingTaskId) {
@@ -632,10 +873,37 @@ function bindEvents() {
       id: schedulingInboxId,
       date: $('schedule-date').value,
       planned_start: $('schedule-start').value,
-      planned_minutes: $('schedule-minutes').value
+      planned_minutes: $('schedule-minutes').value,
+      project_id: $('schedule-project').value
     });
   });
   $('btn-schedule-cancel').addEventListener('click', () => $('schedule-dialog').close());
+
+  $('btn-sum-prev').addEventListener('click', () => { currentDate = shiftDate(currentDate, -1); reload(); });
+  $('btn-sum-next').addEventListener('click', () => { currentDate = shiftDate(currentDate, 1); reload(); });
+  $('btn-sum-today').addEventListener('click', () => { currentDate = todayStr(); reload(); });
+
+  $('btn-add-project').addEventListener('click', () => openProjectDialog(null));
+  $('project-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    $('project-dialog').close();
+    const fields = {
+      name: $('project-name').value.trim(),
+      color: getColorChoice('project-color')
+    };
+    if (!fields.name) return;
+    if (editingProjectId) {
+      mutate('projectUpdate', { id: editingProjectId, ...fields });
+    } else {
+      mutate('projectAdd', fields);
+    }
+  });
+  $('btn-project-cancel').addEventListener('click', () => $('project-dialog').close());
+  $('btn-project-delete').addEventListener('click', () => {
+    if (!confirm('このプロジェクトを削除しますか？（タスクは残り、プロジェクトなしになります）')) return;
+    $('project-dialog').close();
+    mutate('projectDelete', { id: editingProjectId });
+  });
 
   $('btn-add-routine').addEventListener('click', () => openRoutineDialog(null));
   $('routine-form').addEventListener('submit', (e) => {
@@ -655,7 +923,7 @@ function bindEvents() {
       weekdays,
       memo: $('routine-memo').value,
       interval_weeks: interval,
-      color: getColorChoice('routine-color')
+      project_id: $('routine-project').value
     };
     if (!fields.title) return;
     if (editingRoutine) {
